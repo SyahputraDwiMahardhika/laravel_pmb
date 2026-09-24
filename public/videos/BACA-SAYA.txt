@@ -1,0 +1,5 @@
+Letakkan file video informasi PMB Anda di folder ini dengan nama:
+informasi-pmb.mp4
+
+Halaman /informasi-pmb akan otomatis memutar video ini menggunakan tag <video> HTML5.
+Jika file belum tersedia, halaman tetap tampil dengan poster/gambar placeholder.
