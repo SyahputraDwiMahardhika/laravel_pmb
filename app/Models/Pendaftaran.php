@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-// Model utama: data pendaftaran mahasiswa baru.
+// Model utama: data pendaftaran mahasiswa baru (struktur sesuai F.2).
 class Pendaftaran extends Model
 {
     protected $fillable = [
@@ -12,24 +12,30 @@ class Pendaftaran extends Model
         'nomor_pendaftaran',
         'nama_lengkap',
         'nik',
-        'tempat_lahir',
-        'tanggal_lahir',
-        'jenis_kelamin',
-        'religion_id',
-        'nomor_hp',
-        'email',
-        'foto',
-        'alamat',
+        'alamat_ktp',
+        'alamat_domisili',
         'province_id',
         'regency_id',
         'kecamatan',
-        'kelurahan',
         'kode_pos',
+        'nomor_telepon',
+        'nomor_hp',
+        'email',
+        'kewarganegaraan',
+        'negara_asal',
+        'tanggal_lahir',
+        'tempat_lahir',
+        'jenis_kelamin',
+        'status_perkawinan',
+        'religion_id',
+        'program_studi_1_id',
+        'program_studi_2_id',
+        'gelombang_id',
+        'foto',
         'asal_sekolah',
         'jurusan_asal_sekolah',
         'tahun_lulus',
         'nilai_rata_rata',
-        'program_studi_id',
         'jalur_pendaftaran',
         'status_pendaftaran',
     ];
@@ -58,9 +64,21 @@ class Pendaftaran extends Model
         return $this->belongsTo(Regency::class);
     }
 
-    public function programStudi()
+    // Program studi pilihan pertama.
+    public function programStudi1()
     {
-        return $this->belongsTo(ProgramStudi::class);
+        return $this->belongsTo(ProgramStudi::class, 'program_studi_1_id');
+    }
+
+    // Program studi pilihan kedua.
+    public function programStudi2()
+    {
+        return $this->belongsTo(ProgramStudi::class, 'program_studi_2_id');
+    }
+
+    public function gelombang()
+    {
+        return $this->belongsTo(Gelombang::class);
     }
 
     // Generator nomor pendaftaran unik, format: PMB-2026-000001

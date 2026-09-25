@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ReligionSeeder::class,
             ProgramStudiSeeder::class,
+            GelombangSeeder::class,
             ProvinceRegencySeeder::class, // Import data provinsi & kabupaten/kota
         ]);
     }

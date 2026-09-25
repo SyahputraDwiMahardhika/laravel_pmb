@@ -54,20 +54,29 @@ class AuthController extends Controller
     }
 
     // Proses registrasi akun baru (role otomatis: mahasiswa).
+    // Field & validasi mengikuti dokumen soal "F.1 Form Registrasi Akun".
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:150',
+            'name' => 'required|string|min:3|max:100',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+            'nomor_hp' => 'required|numeric|digits_between:10,15',
+            'password' => 'required|string|min:8|confirmed',
+            'persetujuan' => 'accepted',
         ], [
-            'name.required' => 'Nama wajib diisi.',
+            'name.required' => 'Nama lengkap wajib diisi.',
+            'name.min' => 'Nama lengkap minimal 3 karakter.',
+            'name.max' => 'Nama lengkap maksimal 100 karakter.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Email harus menggunakan format email yang valid.',
             'email.unique' => 'Email sudah terdaftar, silakan gunakan email lain.',
-            'password.required' => 'Password wajib diisi.',
-            'password.min' => 'Password minimal 6 karakter.',
-            'password.confirmed' => 'Konfirmasi password tidak sama.',
+            'nomor_hp.required' => 'Nomor HP wajib diisi.',
+            'nomor_hp.numeric' => 'Nomor HP hanya boleh berisi angka.',
+            'nomor_hp.digits_between' => 'Nomor HP harus 10-15 digit.',
+            'password.required' => 'Kata sandi wajib diisi.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak sama.',
+            'persetujuan.accepted' => 'Anda harus menyetujui ketentuan terlebih dahulu.',
         ]);
 
         if ($validator->fails()) {
@@ -77,6 +86,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'nomor_hp' => $request->nomor_hp,
             'password' => Hash::make($request->password),
             'role' => 'mahasiswa',
         ]);

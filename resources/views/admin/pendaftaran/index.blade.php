@@ -29,7 +29,7 @@
             <tr>
                 <td>{{ $p->nomor_pendaftaran }}</td>
                 <td>{{ $p->nama_lengkap }}</td>
-                <td>{{ $p->programStudi->nama ?? '-' }}</td>
+                <td>{{ $p->programStudi1->nama ?? '-' }}</td>
                 <td>{{ $p->jalur_pendaftaran }}</td>
                 <td><span class="badge badge-status-{{ $p->status_pendaftaran }}">{{ $p->status_pendaftaran }}</span></td>
                 <td>

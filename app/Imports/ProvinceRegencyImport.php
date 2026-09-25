@@ -46,7 +46,7 @@ class ProvinceRegencyImport implements ToCollection
     private int $provinceCounter = 0;
     private int $regencyCounter = 0;
 
-    public function collection(Collection $rows): void
+    public function collection(Collection $rows)
     {
         foreach ($rows as $index => $row) {
             $text = trim((string) ($row[0] ?? ''));

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gelombang;
 use App\Models\Pendaftaran;
 use App\Models\ProgramStudi;
 use App\Models\Province;
@@ -25,7 +26,7 @@ class PendaftaranController extends Controller
             'ditolak' => Pendaftaran::where('status_pendaftaran', 'Ditolak')->count(),
         ];
 
-        $pendaftarTerbaru = Pendaftaran::with(['programStudi'])
+        $pendaftarTerbaru = Pendaftaran::with(['programStudi1'])
             ->latest()
             ->take(5)
             ->get();
@@ -38,7 +39,7 @@ class PendaftaranController extends Controller
         $status = $request->get('status');
         $keyword = $request->get('q');
 
-        $pendaftarans = Pendaftaran::with(['programStudi', 'province', 'regency'])
+        $pendaftarans = Pendaftaran::with(['programStudi1', 'province', 'regency'])
             ->when($status, fn ($q) => $q->where('status_pendaftaran', $status))
             ->when($keyword, function ($q) use ($keyword) {
                 $q->where('nama_lengkap', 'like', "%{$keyword}%")
@@ -53,7 +54,7 @@ class PendaftaranController extends Controller
 
     public function show(Pendaftaran $pendaftaran)
     {
-        $pendaftaran->load(['user', 'religion', 'province', 'regency', 'programStudi']);
+        $pendaftaran->load(['user', 'religion', 'province', 'regency', 'programStudi1', 'programStudi2', 'gelombang']);
 
         return view('admin.pendaftaran.show', compact('pendaftaran'));
     }
@@ -64,8 +65,9 @@ class PendaftaranController extends Controller
         $regencies = Regency::where('province_id', $pendaftaran->province_id)->orderBy('name')->get();
         $religions = Religion::orderBy('name')->get();
         $programStudis = ProgramStudi::orderBy('nama')->get();
+        $gelombangs = Gelombang::orderBy('tanggal_mulai')->get();
 
-        return view('admin.pendaftaran.edit', compact('pendaftaran', 'provinces', 'regencies', 'religions', 'programStudis'));
+        return view('admin.pendaftaran.edit', compact('pendaftaran', 'provinces', 'regencies', 'religions', 'programStudis', 'gelombangs'));
     }
 
     public function update(Request $request, Pendaftaran $pendaftaran)
@@ -74,15 +76,19 @@ class PendaftaranController extends Controller
             'nama_lengkap' => 'required|string|max:150',
             'status_pendaftaran' => 'required|in:Menunggu,Diverifikasi,Diterima,Ditolak',
             'jalur_pendaftaran' => 'required|in:Reguler,Beasiswa,Mandiri',
-            'program_studi_id' => 'required|exists:program_studis,id',
+            'program_studi_1_id' => 'required|exists:program_studis,id',
+            'program_studi_2_id' => 'required|exists:program_studis,id|different:program_studi_1_id',
+            'gelombang_id' => 'required|exists:gelombangs,id',
         ], [
             'nama_lengkap.required' => 'Nama lengkap wajib diisi.',
             'status_pendaftaran.required' => 'Status pendaftaran wajib dipilih.',
-            'program_studi_id.exists' => 'Program studi tidak valid.',
+            'program_studi_1_id.exists' => 'Program studi pilihan 1 tidak valid.',
+            'program_studi_2_id.different' => 'Program studi pilihan 2 harus berbeda dari pilihan 1.',
         ]);
 
         $pendaftaran->update($request->only([
-            'nama_lengkap', 'status_pendaftaran', 'jalur_pendaftaran', 'program_studi_id',
+            'nama_lengkap', 'status_pendaftaran', 'jalur_pendaftaran',
+            'program_studi_1_id', 'program_studi_2_id', 'gelombang_id',
         ]));
 
         return redirect()->route('admin.pendaftaran.index')

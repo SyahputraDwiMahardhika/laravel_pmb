@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gelombang;
 use App\Models\Pendaftaran;
 use App\Models\ProgramStudi;
 use App\Models\Province;
@@ -10,10 +11,10 @@ use App\Models\Regency;
 use App\Models\Religion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 // Calon mahasiswa: mengisi, melihat, dan mencetak pendaftaran miliknya sendiri.
+// Field & validasi bagian "Form Pendaftaran Mahasiswa Baru" mengikuti dokumen soal F.2.
 class PendaftaranController extends Controller
 {
     public function dashboard()
@@ -34,8 +35,9 @@ class PendaftaranController extends Controller
         $provinces = Province::orderBy('name')->get();
         $religions = Religion::orderBy('name')->get();
         $programStudis = ProgramStudi::orderBy('nama')->get();
+        $gelombangs = Gelombang::where('aktif', true)->orderBy('tanggal_mulai')->get();
 
-        return view('mahasiswa.pendaftaran.create', compact('provinces', 'religions', 'programStudis'));
+        return view('mahasiswa.pendaftaran.create', compact('provinces', 'religions', 'programStudis', 'gelombangs'));
     }
 
     public function store(Request $request)
@@ -44,37 +46,52 @@ class PendaftaranController extends Controller
             return redirect()->route('mahasiswa.pendaftaran.show');
         }
 
-        // Validasi server-side lengkap sesuai requirement soal.
+        // Validasi server-side lengkap sesuai dokumen soal F.2.
         $validated = $request->validate([
             'nama_lengkap' => 'required|string|max:150',
-            'nik' => 'required|digits:16',
-            'tempat_lahir' => 'required|string|max:100',
-            'tanggal_lahir' => 'required|date|before:today',
-            'jenis_kelamin' => 'required|in:L,P',
-            'religion_id' => 'required|exists:religions,id',
-            'nomor_hp' => 'required|numeric|digits_between:9,15',
-            'email' => 'required|email',
-            'foto' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'alamat' => 'required|string',
+            'nik' => 'required|digits:16|unique:pendaftarans,nik',
+            'alamat_ktp' => 'required|string|max:255',
+            'alamat_domisili' => 'required|string|max:255',
             'province_id' => 'required|exists:provinces,id',
             'regency_id' => 'required|exists:regencies,id',
-            'kecamatan' => 'required|string|max:100',
-            'kelurahan' => 'required|string|max:100',
-            'kode_pos' => 'required|digits_between:5,10',
-            'asal_sekolah' => 'required|string|max:150',
-            'jurusan_asal_sekolah' => 'required|string|max:100',
-            'tahun_lulus' => 'required|digits:4|integer|min:2000|max:' . date('Y'),
-            'nilai_rata_rata' => 'required|numeric|min:0|max:100',
-            'program_studi_id' => 'required|exists:program_studis,id',
+            'kecamatan' => 'required|string|min:2|max:100',
+            'kode_pos' => 'nullable|digits:5',
+            'nomor_telepon' => 'nullable|numeric',
+            'nomor_hp' => 'required|numeric|digits_between:10,15',
+            'email' => 'required|email',
+            'kewarganegaraan' => 'required|in:WNI,WNA',
+            'negara_asal' => 'required_if:kewarganegaraan,WNA|nullable|string|max:100',
+            'tanggal_lahir' => 'required|date|before_or_equal:' . now()->subYears(14)->format('Y-m-d'),
+            'tempat_lahir' => 'required|string|max:100',
+            'jenis_kelamin' => 'required|in:Pria,Wanita',
+            'status_perkawinan' => 'required|in:Belum Menikah,Menikah,Lain-lain',
+            'religion_id' => 'required|exists:religions,id',
+            'program_studi_1_id' => 'required|exists:program_studis,id',
+            'program_studi_2_id' => 'required|exists:program_studis,id|different:program_studi_1_id',
+            'gelombang_id' => 'required|exists:gelombangs,id',
+
+            // Field pelengkap di luar tabel F.2 (data akademik & foto).
+            'foto' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'asal_sekolah' => 'nullable|string|max:150',
+            'jurusan_asal_sekolah' => 'nullable|string|max:100',
+            'tahun_lulus' => 'nullable|digits:4|integer|min:2000|max:' . date('Y'),
+            'nilai_rata_rata' => 'nullable|numeric|min:0|max:100',
             'jalur_pendaftaran' => 'required|in:Reguler,Beasiswa,Mandiri',
         ], [
             'nik.digits' => 'NIK harus terdiri dari 16 digit angka.',
-            'tanggal_lahir.before' => 'Tanggal lahir harus valid dan sebelum hari ini.',
+            'nik.unique' => 'NIK ini sudah pernah digunakan untuk mendaftar.',
+            'alamat_ktp.max' => 'Alamat KTP maksimal 255 karakter.',
+            'kecamatan.min' => 'Kecamatan minimal 2 karakter.',
+            'kode_pos.digits' => 'Kode pos harus 5 digit angka.',
+            'nomor_telepon.numeric' => 'Nomor telepon hanya boleh berisi angka.',
             'nomor_hp.numeric' => 'Nomor HP hanya boleh berisi angka.',
+            'nomor_hp.digits_between' => 'Nomor HP harus 10-15 digit.',
             'email.email' => 'Email harus menggunakan format email yang valid.',
+            'negara_asal.required_if' => 'Negara asal wajib diisi jika kewarganegaraan WNA.',
+            'tanggal_lahir.before_or_equal' => 'Usia calon mahasiswa minimal 14 tahun.',
+            'program_studi_2_id.different' => 'Program studi pilihan 2 harus berbeda dari pilihan 1.',
             'foto.image' => 'File yang diunggah harus berupa gambar.',
             'foto.max' => 'Ukuran foto maksimal 2MB.',
-            'kode_pos.digits_between' => 'Kode pos harus berupa angka 5-10 digit.',
             '*.required' => 'Field ini wajib diisi.',
         ]);
 
@@ -102,7 +119,7 @@ class PendaftaranController extends Controller
                 ->with('error', 'Anda belum melakukan pendaftaran.');
         }
 
-        $pendaftaran->load(['religion', 'province', 'regency', 'programStudi']);
+        $pendaftaran->load(['religion', 'province', 'regency', 'programStudi1', 'programStudi2', 'gelombang']);
 
         return view('mahasiswa.pendaftaran.show', compact('pendaftaran'));
     }
@@ -125,7 +142,7 @@ class PendaftaranController extends Controller
                 ->with('error', 'Anda belum melakukan pendaftaran.');
         }
 
-        $pendaftaran->load(['religion', 'province', 'regency', 'programStudi']);
+        $pendaftaran->load(['religion', 'province', 'regency', 'programStudi1', 'programStudi2', 'gelombang']);
 
         $pdf = Pdf::loadView('pdf.bukti', compact('pendaftaran'))->setPaper('a4');
 
